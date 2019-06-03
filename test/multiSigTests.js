@@ -185,23 +185,62 @@ contract("Signatures Tests", async accounts => {
     });
 });
 
-/*
-contract("Signature negative Tests", async accounts => {
-    
+contract("Signatures Negative Tests", async accounts => {
+
     let instance;
     let owners = new Array(account1.addr, account2.addr, account3.addr);
+    let fk_owners = new Array(accounts[5], accounts[6], accounts[7]);
     let threshold = 3;
+    let fk_threshold = 2;
     let chainId = 5777;
+    let fk_chainId = 5778;
     let nonce = 1;
+    let fk_nonce = 2;
     let gasLimit = 1;
+    let fk_gasLimit = 2;
     let data = "0x";
-
+    let fk_data = "0x1234";
+    let amount = web3.utils.toWei("1", "ether");
+    let fk_amount = web3.utils.toWei("10", "ether");
+    let destination = accounts[5];
+    let fk_destination = accounts[0];
+    let prefix = "\x19Ethereum Signed Message:\n32";
+    
     beforeEach("deploy a new instance", async () => {
         instance = await Wallet.new(owners, threshold, chainId);
+        
         let amount =  web3.utils.toWei("1", "ether");
         await instance.sendTransaction({value: amount});
     });
-    //tests : wrong parameters
+
+    it("valid signature wrong parameters", async () => {
+        let hash = await web3.utils.soliditySha3(nonce, amount, destination, gasLimit, data);
+        let fk_hash = await web3.utils.soliditySha3(nonce, amount, destination, gasLimit, data);
+
+        account1.signature = await web3.eth.accounts.sign(hash, account1.pk);
+        account2.signature = await web3.eth.accounts.sign(hash, account2.pk);
+        account3.signature = await web3.eth.accounts.sign(hash, account3.pk);
+
+        let _objs = new Array(
+            account1,
+            account2,
+            account3
+        )
+
+        let finalSign = _objs.sort((a,b) => a.addr > b.addr);
+        let signatures = finalSign.map(a => a.signature.signature.replace('0x', '')).join('');
+        
+        //Try to execute a different transaction from the sign one;
+        await expectRevert(instance.execute('0x' + signatures, fk_nonce, amount, destination, gasLimit, data), 'not peer');
+        await expectRevert(instance.execute('0x' + signatures, nonce, fk_amount, destination, gasLimit, data), 'not peer');
+        await expectRevert(instance.execute('0x' + signatures, nonce, amount, fk_destination, gasLimit, data), 'not peer');
+        await expectRevert(instance.execute('0x' + signatures, nonce, amount, destination, fk_gasLimit, data), 'not peer');
+        await expectRevert(instance.execute('0x' + signatures, nonce, amount, destination, gasLimit, fk_data), 'not peer');
+    });
+});
+
+    /*
+    //tests : wrong parameters - Done
     //alter signatures
     //omit signature
     //less than threshold
@@ -209,7 +248,5 @@ contract("Signature negative Tests", async accounts => {
     //same signature 2x
     //change order 
     //feed another signature of a not peers address
-    //it("should emit a revert when mismatch parameters to hash", async => {
-    //});
-});
-*/
+    */
+
