@@ -225,7 +225,7 @@ contract("Signatures Negative Tests", async accounts => {
             account1,
             account2,
             account3
-        )
+        );
 
         let finalSign = _objs.sort((a,b) => a.addr > b.addr);
         let signatures = finalSign.map(a => a.signature.signature.replace('0x', '')).join('');
@@ -237,11 +237,76 @@ contract("Signatures Negative Tests", async accounts => {
         await expectRevert(instance.execute('0x' + signatures, nonce, amount, destination, fk_gasLimit, data), 'not peer');
         await expectRevert(instance.execute('0x' + signatures, nonce, amount, destination, gasLimit, fk_data), 'not peer');
     });
+
+    it("valid parameters with wrong signature", async () => {
+        let hash = await web3.utils.soliditySha3(nonce, amount, destination, gasLimit, data);
+
+        account1.signature = await web3.eth.accounts.sign(hash, account1.pk);
+        account2.signature = await web3.eth.accounts.sign(hash, account2.pk);
+        account3.signature = await web3.eth.accounts.sign(hash, account3.pk);
+
+        let _objs = new Array(
+            account1,
+            account2,
+            account3
+        );
+
+        let finalSign = _objs.sort((a,b) => a.addr > b.addr);
+        let fk_signatures = finalSign.map(a => a.signature.signature.replace('0x', '').replace('4', '3')).join('');
+        
+        await expectRevert(instance.execute('0x' + fk_signatures, nonce, amount, destination, gasLimit, data), 'not peer');
+    });
+
+    it("omit signature", async() => {
+        await expectRevert(instance.execute('0x00000000000000000000', nonce, amount, destination, gasLimit, data), 'signature order should be ASC');
+
+    })
+
+    it("should revert without correct num. signatures", async () => {
+    
+        let hash = await web3.utils.soliditySha3(nonce, amount, destination, gasLimit, data);
+
+        account1.signature = await web3.eth.accounts.sign(hash, account1.pk);
+        account2.signature = await web3.eth.accounts.sign(hash, account2.pk);
+
+        let _objs = new Array(
+            account1,
+            account2
+        );
+
+        let finalSign = _objs.sort((a,b) => a.addr > b.addr);
+        let signatures = finalSign.map(a => a.signature.signature.replace('0x', '')).join('');
+
+        console.log(signatures);
+        
+        await expectRevert(instance.execute('0x' + signatures, nonce, amount, destination, gasLimit, data), 'not peer');
+    });
+
+    it("should not accept the same signature 2x", async () => {
+        
+        let hash = await web3.utils.soliditySha3(nonce, amount, destination, gasLimit, data);
+
+        account1.signature = await web3.eth.accounts.sign(hash, account1.pk);
+        account2.signature = await web3.eth.accounts.sign(hash, account2.pk);
+        account3.signature = await web3.eth.accounts.sign(hash, account3.pk);
+
+        let _objs = new Array(
+            account1,
+            account2,
+            account1
+        );
+
+        let finalSign = _objs.sort((a,b) => a.addr > b.addr);
+        let signatures = finalSign.map(a => a.signature.signature.replace('0x', '')).join('');
+        
+        await expectRevert(instance.execute('0x' +signatures, nonce, amount, destination, gasLimit, data), 'not peer');
+    });
+     
 });
 
     /*
     //tests : wrong parameters - Done
-    //alter signatures
+    //alter signatures - Done
     //omit signature
     //less than threshold
     //same singnature 3x
