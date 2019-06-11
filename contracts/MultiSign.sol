@@ -88,7 +88,7 @@ contract MultiSign {
        
         while(i < threshold) {
             _testAddr = recovery(_hash, _signatures, i);
-            require(_lastAddr < _testAddr, 'signature order should be ASC');
+            require(_lastAddr < _testAddr, 'signatures order should be ASC and unique');
             require(_isOwner[_testAddr], 'not peer');            
             _lastAddr = _testAddr;
             i++;

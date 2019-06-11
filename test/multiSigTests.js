@@ -31,6 +31,16 @@ var account3 = {
     pk:"0x4c064f3c5a50e682b36f9aea8dd85b4f60fc1884c0848d63552910caf8f2205c", 
     signature: ""
 }
+var account4 = {
+    addr: "0x5B71De37f441eE0A874d37d54E2ae74D472573fB",
+    pk: "433b72472d99a8ae0681e870fa2c2585a40454ee3b7d7a021e5389f9d4079dde",
+	signature: ""
+}
+var account5 = {
+	addr: "0xa77d709d38Ef88B60312114fA27a644D2fB05CFA",
+	pk:	"41fd771de6a7cd4af41dde139cbb05e8e98e0e9333df53232e6a1567a3ec5877",
+	signature: ""
+}
 
 
 contract("Deployment Tests", async accounts => {
@@ -258,7 +268,7 @@ contract("Signatures Negative Tests", async accounts => {
     });
 
     it("omit signature", async() => {
-        await expectRevert(instance.execute('0x00000000000000000000', nonce, amount, destination, gasLimit, data), 'signature order should be ASC');
+        await expectRevert(instance.execute('0x00000000000000000000', nonce, amount, destination, gasLimit, data), 'signatures order should be ASC and unique');
 
     })
 
@@ -277,9 +287,7 @@ contract("Signatures Negative Tests", async accounts => {
         let finalSign = _objs.sort((a,b) => a.addr > b.addr);
         let signatures = finalSign.map(a => a.signature.signature.replace('0x', '')).join('');
 
-        console.log(signatures);
-        
-        await expectRevert(instance.execute('0x' + signatures, nonce, amount, destination, gasLimit, data), 'not peer');
+        await expectRevert(instance.execute('0x' +signatures, nonce, amount, destination, gasLimit, data), 'signatures order should be ASC and unique');
     });
 
     it("should not accept the same signature 2x", async () => {
@@ -299,19 +307,46 @@ contract("Signatures Negative Tests", async accounts => {
         let finalSign = _objs.sort((a,b) => a.addr > b.addr);
         let signatures = finalSign.map(a => a.signature.signature.replace('0x', '')).join('');
         
-        await expectRevert(instance.execute('0x' +signatures, nonce, amount, destination, gasLimit, data), 'not peer');
+        await expectRevert(instance.execute('0x' +signatures, nonce, amount, destination, gasLimit, data), 'signatures order should be ASC and unique');
     });
-     
+
+    it("should not accept the same signatures 3x", async () => {
+        
+        let hash = await web3.utils.soliditySha3(nonce, amount, destination, gasLimit, data);
+
+        account1.signature = await web3.eth.accounts.sign(hash, account1.pk);
+        account2.signature = await web3.eth.accounts.sign(hash, account1.pk);
+        account3.signature = await web3.eth.accounts.sign(hash, account1.pk);
+        
+        let _objs = new Array(
+            account1,
+            account2,
+            account3
+        );
+    
+        let finalSign = _objs.sort((a,b) => a.addr > b.addr);
+        let signatures = finalSign.map(a => a.signature.signature.replace('0x', '')).join('');
+        
+        await expectRevert(instance.execute('0x' +signatures, nonce, amount, destination, gasLimit, data), 'signatures order should be ASC and unique');
+
+    });
+
+	it("should not continue with wrong signature", async () => {
+        let hash = await web3.utils.soliditySha3(nonce, amount, destination, gasLimit, data);
+        
+		account1.signature = await web3.eth.accounts.sign(hash, account1.pk);
+        account2.signature = await web3.eth.accounts.sign(hash, account2.pk);
+        account4.signature = await web3.eth.accounts.sign(hash, account4.pk);
+        
+        let _objs = new Array(
+            account1,
+            account2,
+            account4
+        );
+    
+        let finalSign = _objs.sort((a,b) => a.addr > b.addr);
+        let signatures = finalSign.map(a => a.signature.signature.replace('0x', '')).join('');
+        
+        await expectRevert(instance.execute('0x' +signatures, nonce, amount, destination, gasLimit, data), 'not peer');
+	});
 });
-
-    /*
-    //tests : wrong parameters - Done
-    //alter signatures - Done
-    //omit signature
-    //less than threshold
-    //same singnature 3x
-    //same signature 2x
-    //change order 
-    //feed another signature of a not peers address
-    */
-
