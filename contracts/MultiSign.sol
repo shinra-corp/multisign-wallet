@@ -130,6 +130,7 @@ contract MultiSign {
     }
 
 
+		
     //Slice the bytes to signatures;
     function _slice(bytes memory _signatures, uint256 _index) internal pure returns(bytes32 r, bytes32 s, uint8 v) {
         
